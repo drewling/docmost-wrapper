@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setup</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      padding: 24px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    
+    .header {
+      margin-bottom: 20px;
+    }
+    
+    .header h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .header p {
+      font-size: 12px;
+      color: #888;
+    }
+    
+    .setting-group {
+      margin-bottom: 16px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      color: #e0e0e0;
+    }
+    
+    input[type="text"] {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #2a2a2a;
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    input[type="text"]:focus {
+      border-color: #6366f1;
+    }
+    
+    .hint {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+    }
+    
+    .buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #333;
+    }
+    
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .btn-cancel {
+      background: #333;
+      color: #fff;
+    }
+    
+    .btn-cancel:hover {
+      background: #444;
+    }
+    
+    .btn-save {
+      background: #6366f1;
+      color: #fff;
+    }
+    
+    .btn-save:hover {
+      background: #4f46e5;
+    }
+    
+    .btn-save:disabled {
+      background: #444;
+      color: #888;
+      cursor: not-allowed;
+    }
+    
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2 id="dialog-title">Setup Docmost</h2>
+    <p id="dialog-subtitle">Enter your Docmost instance URL to get started</p>
+  </div>
+  
+  <div class="setting-group">
+    <label for="docmost-url">Docmost URL</label>
+    <input type="text" id="docmost-url" placeholder="https://your-docmost-instance.com">
+    <div class="hint">Example: https://docs.yourcompany.com</div>
+  </div>
+  
+  <div class="buttons">
+    <button class="btn-cancel hidden" id="btn-cancel">Cancel</button>
+    <button class="btn-save" id="btn-save">Connect</button>
+  </div>
+  
+  <script>
+    const urlInput = document.getElementById('docmost-url')
+    const btnCancel = document.getElementById('btn-cancel')
+    const btnSave = document.getElementById('btn-save')
+    const dialogTitle = document.getElementById('dialog-title')
+    const dialogSubtitle = document.getElementById('dialog-subtitle')
+    
+    let isFirstSetup = true
+    
+    async function loadSettings() {
+      const url = await window.docmostAPI.getDocmostUrl()
+      
+      if (url) {
+        isFirstSetup = false
+        urlInput.value = url
+        dialogTitle.textContent = 'Settings'
+        dialogSubtitle.textContent = 'Configure your Docmost connection'
+        btnCancel.classList.remove('hidden')
+        btnSave.textContent = 'Save & Reload'
+      }
+    }
+    
+    btnCancel.addEventListener('click', () => {
+      window.close()
+    })
+    
+    btnSave.addEventListener('click', async () => {
+      let url = urlInput.value.trim()
+      
+      if (!url) {
+        urlInput.style.borderColor = '#ef4444'
+        return
+      }
+      
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url
+      }
+      
+      urlInput.style.borderColor = '#333'
+      
+      await window.docmostAPI.setDocmostUrl(url)
+      window.close()
+    })
+    
+    urlInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        btnSave.click()
+      }
+    })
+    
+    loadSettings()
+  </script>
+</body>
+</html>

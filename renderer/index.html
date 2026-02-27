@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; connect-src *; frame-src *;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; connect-src *; frame-src *;">
   <title>Docmost</title>
   <style>
     * {
@@ -16,6 +16,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
+      background: #1a1a2e;
     }
     
     webview {
@@ -71,7 +72,7 @@
     <div class="loading-spinner"></div>
   </div>
   
-  <webview id="docmost-webview" src="https://work.drewl.com" partition="persist:docmost"></webview>
+  <webview id="docmost-webview" src="about:blank" partition="persist:docmost" allowpopups></webview>
   
   <script src="renderer.js"></script>
 </body>

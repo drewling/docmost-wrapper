@@ -1,10 +1,19 @@
-const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron')
+const { app, BrowserWindow, Menu, shell, ipcMain, dialog } = require('electron')
 const path = require('path')
-const log = require('electron-log')
+const Store = require('electron-store')
 
-const DOCMOST_URL = 'https://work.drewl.com'
+const store = new Store()
 
 let mainWindow = null
+let settingsWindow = null
+
+function getDocmostUrl() {
+  return store.get('docmostUrl') || null
+}
+
+function setDocmostUrl(url) {
+  store.set('docmostUrl', url)
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -13,14 +22,13 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     title: 'Docmost',
+    frame: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
       webviewTag: true
-    },
-    titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 15, y: 15 }
+    }
   })
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'))
@@ -30,8 +38,58 @@ function createWindow() {
   })
 }
 
+function createSettingsWindow() {
+  if (settingsWindow) {
+    settingsWindow.focus()
+    return
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 420,
+    height: 220,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    title: 'Settings',
+    parent: mainWindow,
+    modal: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
+    }
+  })
+
+  settingsWindow.loadFile(path.join(__dirname, 'renderer', 'settings.html'))
+
+  settingsWindow.on('closed', () => {
+    settingsWindow = null
+  })
+}
+
 function createMenu() {
   const template = [
+    {
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        {
+          label: 'Settings...',
+          accelerator: 'Cmd+,',
+          click: () => createSettingsWindow()
+        },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    },
     {
       label: 'File',
       submenu: [
@@ -44,10 +102,7 @@ function createMenu() {
         {
           label: 'Close Window',
           accelerator: 'Cmd+W',
-          click: () => {
-            const win = BrowserWindow.getFocusedWindow()
-            if (win) win.close()
-          }
+          role: 'close'
         }
       ]
     },
@@ -60,7 +115,15 @@ function createMenu() {
         { role: 'cut' },
         { role: 'copy' },
         { role: 'paste' },
-        { role: 'selectAll' }
+        { role: 'pasteAndMatchStyle' },
+        { role: 'delete' },
+        { role: 'selectAll' },
+        { type: 'separator' },
+        {
+          label: 'Find and Replace',
+          accelerator: 'Cmd+F',
+          click: () => sendAction('find')
+        }
       ]
     },
     {
@@ -129,92 +192,84 @@ function createMenu() {
       ]
     },
     {
-      label: 'Actions',
+      label: 'Format',
       submenu: [
         {
-          label: 'New Page',
-          accelerator: 'Cmd+N',
-          click: () => sendAction('newPage')
+          label: 'Bold',
+          accelerator: 'Cmd+B',
+          click: () => sendAction('bold')
         },
         {
-          label: 'Toggle Sidebar',
-          accelerator: 'Cmd+\\',
-          click: () => sendAction('toggleSidebar')
+          label: 'Italic',
+          accelerator: 'Cmd+I',
+          click: () => sendAction('italic')
         },
         {
-          label: 'Toggle Comments',
-          accelerator: 'Cmd+Shift+C',
-          click: () => sendAction('toggleComments')
+          label: 'Underline',
+          accelerator: 'Cmd+U',
+          click: () => sendAction('underline')
+        },
+        {
+          label: 'Strikethrough',
+          accelerator: 'Cmd+Shift+S',
+          click: () => sendAction('strikethrough')
+        },
+        {
+          label: 'Highlight',
+          accelerator: 'Cmd+Shift+H',
+          click: () => sendAction('highlight')
+        },
+        {
+          label: 'Inline Code',
+          accelerator: 'Cmd+E',
+          click: () => sendAction('inlineCode')
         },
         { type: 'separator' },
         {
-          label: 'Focus Mode',
-          accelerator: 'Cmd+Shift+F',
-          click: () => sendAction('focusMode')
-        }
-      ]
-    },
-    {
-      label: 'Insert',
-      submenu: [
-        {
-          label: 'Mermaid Diagram',
-          accelerator: 'Cmd+Shift+M',
-          click: () => sendAction('insertMermaid')
+          label: 'Heading 1',
+          accelerator: 'Cmd+Alt+1',
+          click: () => sendAction('heading1')
         },
         {
-          label: 'Draw.io Diagram',
-          accelerator: 'Cmd+Shift+D',
-          click: () => sendAction('insertDrawio')
+          label: 'Heading 2',
+          accelerator: 'Cmd+Alt+2',
+          click: () => sendAction('heading2')
         },
         {
-          label: 'Excalidraw Diagram',
-          accelerator: 'Cmd+Shift+E',
-          click: () => sendAction('insertExcalidraw')
+          label: 'Heading 3',
+          accelerator: 'Cmd+Alt+3',
+          click: () => sendAction('heading3')
+        },
+        {
+          label: 'Normal Text',
+          accelerator: 'Cmd+Alt+0',
+          click: () => sendAction('normalText')
         },
         { type: 'separator' },
         {
-          label: 'Table',
-          accelerator: 'Cmd+Shift+T',
-          click: () => sendAction('insertTable')
+          label: 'Bullet List',
+          accelerator: 'Cmd+Shift+8',
+          click: () => sendAction('bulletList')
+        },
+        {
+          label: 'Numbered List',
+          accelerator: 'Cmd+Shift+7',
+          click: () => sendAction('numberedList')
+        },
+        {
+          label: 'Task List',
+          accelerator: 'Cmd+Shift+9',
+          click: () => sendAction('taskList')
+        },
+        {
+          label: 'Blockquote',
+          accelerator: 'Cmd+Shift+B',
+          click: () => sendAction('blockquote')
         },
         {
           label: 'Code Block',
-          accelerator: 'Cmd+Option+C',
-          click: () => sendAction('insertCodeBlock')
-        },
-        {
-          label: 'Callout',
-          accelerator: 'Cmd+Option+A',
-          click: () => sendAction('insertCallout')
-        }
-      ]
-    },
-    {
-      label: 'Share',
-      submenu: [
-        {
-          label: 'Share Page Publicly',
-          click: () => sendAction('sharePage')
-        },
-        {
-          label: 'Copy Page Link',
-          accelerator: 'Cmd+L',
-          click: () => sendAction('copyLink')
-        }
-      ]
-    },
-    {
-      label: 'Export',
-      submenu: [
-        {
-          label: 'Export as Markdown',
-          accelerator: 'Cmd+Shift+E',
-          click: () => sendAction('exportMarkdown')
-        },
-        {
-          label: 'Export as HTML',
-          click: () => sendAction('exportHtml')
+          accelerator: 'Cmd+Alt+C',
+          click: () => sendAction('codeBlock')
         }
       ]
     },
@@ -224,7 +279,9 @@ function createMenu() {
         { role: 'minimize' },
         { role: 'zoom' },
         { type: 'separator' },
-        { role: 'front' }
+        { role: 'front' },
+        { type: 'separator' },
+        { role: 'window' }
       ]
     },
     {
@@ -236,17 +293,12 @@ function createMenu() {
         },
         {
           label: 'Keyboard Shortcuts',
-          click: () => sendAction('showShortcuts')
+          click: () => shell.openExternal('https://docmost.com/docs/user-guide/editor#keyboard-shortcuts')
         },
         { type: 'separator' },
         {
           label: 'Report an Issue',
           click: () => shell.openExternal('https://github.com/docmost/docmost/issues')
-        },
-        { type: 'separator' },
-        {
-          label: 'About Docmost',
-          click: () => sendAction('showAbout')
         }
       ]
     }
@@ -262,13 +314,25 @@ function sendAction(action) {
   }
 }
 
-ipcMain.on('execute-action', (event, action) => {
-  sendAction(action)
+ipcMain.handle('get-docmost-url', () => {
+  return getDocmostUrl()
+})
+
+ipcMain.handle('set-docmost-url', (event, url) => {
+  setDocmostUrl(url)
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.send('url-changed', url)
+  }
+  return true
 })
 
 app.whenReady().then(() => {
   createWindow()
   createMenu()
+  
+  if (!getDocmostUrl()) {
+    createSettingsWindow()
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -281,8 +345,4 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
-})
-
-app.on('before-quit', () => {
-  log.info('Application shutting down')
 })

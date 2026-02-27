@@ -17,7 +17,8 @@
     "electron-builder": "^24.9.1"
   },
   "dependencies": {
-    "electron-log": "^5.0.1"
+    "electron-log": "^5.0.1",
+    "electron-store": "^8.1.0"
   },
   "build": {
     "appId": "com.drewling.docmost-wrapper",
@@ -31,11 +32,17 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "hardenedRuntime": true,
